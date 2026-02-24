@@ -1,6 +1,7 @@
 
 /* definitions */
 
+
 %{
 #include <stdio.h>
 #include <string.h>
@@ -19,23 +20,26 @@ void countLines();
 int processString(); 
 %}
 
-newline (\n)
+newline (\r\n|\r|\n) /* Revised */
 whitespace [ \t]
 integer  (0|[1-9][0-9]*)
 integerlead0 (0[0-9]+)
 character (\'[a-zA-Z]\')
 
 /* String can contain any characters between the double quotes other than a newline or unescaped doublequotes. Valid escapes: \n \t \" \\ */
-string (\"([a-zA-Z0-9]|\\.)*\")
+/* This has been revised */
+string (^\"([a-zA-Z0-9]| |\\.)*\"$)
 
 /* multiline string has \n somewhere in the middle */
+/* Not revised, causing issues */
 multlnstring (\"([a-zA-Z0-9]|\\.)*\n([a-zA-Z0-9]|\\.)*\")
 
 /* Unterminated: " without closing " */
-untermstring (\"([a-zA-Z0-9]|\\.)*)
+/* Not revised, causing issues */
+untermstring (\"([a-zA-Z0-9]|\\.)*)  
 
-comment (\/\*([^*]|\*+[^*/])*\*+\/)
-multlncomment   (\/\*[a-zA-Z0-9]*\n.*[a-zA-Z0-9]*\*\/)
+comment (\/\*([^*]|\*+[^\*])*\*+\/)
+multlncomment   (\/\*([^*]|\*+[^\*])*\*+\/)
 untermcomment   (\/\*[a-zA-Z0-9]*\*|\/\*[a-zA-Z0-9]*\/|\/\*[a-zA-Z0-9]*|\/\/[a-zA-Z0-9]*)
 
 identifier      ([a-zA-Z][a-zA-Z0-9]*)
