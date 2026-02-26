@@ -21,22 +21,22 @@ int processString();
 %}
 
 newline (\r\n|\r|\n) /* Revised */
-whitespace [ \t]
+whitespace [\t ]
 integer  (0|[1-9][0-9]*)
 integerlead0 (0[0-9]+)
 character (\'[a-zA-Z]\')
 
 /* String can contain any characters between the double quotes other than a newline or unescaped doublequotes. Valid escapes: \n \t \" \\ */
 /* This has been revised */
-string (^\"([a-zA-Z0-9]| |\\.)*\"$)
+string (\"([^"\\\n]|\\.)*\")
 
 /* multiline string has \n somewhere in the middle */
 /* Not revised, causing issues */
-multlnstring (\"([a-zA-Z0-9]|\\.)*\n([a-zA-Z0-9]|\\.)*\")
+multlnstring (\"([^"\\\n]|\\.)*\n([^"\\\n]|\\.)*\")
 
 /* Unterminated: " without closing " */
 /* Not revised, causing issues */
-untermstring (\"([a-zA-Z0-9]|\\.)*)  
+untermstring (\"([^"\\\n]|\\.)*)  
 
 comment (\/\*([^*]|\*+[^\*])*\*+\/)
 multlncomment   (\/\*([^*]|\*+[^\*])*\*+\/)
@@ -99,16 +99,15 @@ yylineno = 1;
 {character}     {updateCol(); return CHARCONST;}
 {string}        {updateCol(); return processString();}
 {untermstring}  {updateCol(); yyerror = "Unterminated string"; return ERROR;}
-{multlnstring}  {updateCol(); countLines(); yyerror = "String spans multiple lines"; return ERROR;} // Catching a multi-line string and generating an error.
+{multlnstring}  {updateCol(); countLines(); yyerror = "String spans multiple lines"; return ERROR;} /* Catching a multi-line string */
 
  /* Comments - skip (no token) */
 {comment}       {updateCol(); return COMMENT;}
 {untermcomment} { updateCol(); yyerror = "Unterminated comment"; return ERROR; }
 {multlncomment} { updateCol(); countLines(); return MULTLNCOMMENT;}
 
- /* Other - ignore whitespace and newlines */
-{newline}       { yylineno++; current_col = 1;}
-{whitespace}    { current_col += yyleng;}
+\n|\r\n|\r    { yylineno++; current_col = 1;}
+[ \t]+         { current_col += yyleng;}
 .               {return ILLEGAL_TOK;}
 
 %%
@@ -152,9 +151,8 @@ int processString(void) {
                 case '"':  *out++ = '\"'; break;
                 case '\\': *out++ = '\\'; break;
                 default:
-                    static char errbuf[128];
-                    sprintf(errbuf, "Unrecognized escape character in String: (%d, %d): %c", yylineno, yycol, *current);
-                    yyerror = errbuf;
+                    yycol = yycol + (current - 1 - yytext);
+                    yyerror = "Unrecognized escape character in String";
                     return ERROR;
             }
         } else {
